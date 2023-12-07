@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hızlı Yakalama Oyunu</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #gameArea {
+            width: 400px;
+            height: 700px;
+            border: 8px solid darkblue;
+            margin: 20px auto;
+            position: relative;
+            background-image: url('Background.png');
+            background-size: cover;
+        }
+        .target {
+            width: 50px;
+            height: 80px;
+            position: absolute;
+            background-size: cover;
+        }
+        .lays {
+            background-image: url('Lays.png');
+        }
+        .pepsi {
+            background-image: url('Pepsi.png');
+        }
+        .ruffles {
+             background-image: url('Ruffels.png');
+        }
+        #bucket {
+            width: 120px;
+            height: 120px;
+            position: absolute;
+            bottom: 0;
+            left: 145px;
+            background-image: url('Kova.png');
+            background-size: cover;
+            cursor: pointer;
+        }
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 200px;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        #score {
+            position: absolute;
+            top: 175px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: black;
+            z-index: 1000;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #timeRemaining {
+            font-size: 24px;
+        }
+        #gameOverScreen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h2>KAZANDIRIO YAGMURU</h2>
+    <div id="score">SKOR: 0</div>
+    <div id="timeRemaining">KALAN SURE: 20</div>
+    <button id="startButton">BASLA</button>
+    <div id="gameArea">
+        <div id="bucket"></div>
+        <div id="countdown" class="hidden"></div>
+    </div>
+
+    <div id="gameOverScreen">
+        <h3>Oyun Bitti</h3>
+        <div>Final Skorunuz: <span id="finalScore"></span></div>
+        <button id="restartButton">Yeniden Basla</button>
+        <a href="https://jdmt.adj.st/?adj_t=15e1l5w4&adj_redirect_ios=https%3A%2F%2Fapps.apple.com%2Ftr%2Fapp%2Fkim-gb-i-ster%2Fid1552759438&adj_redirect_android=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.solidict.catalog4p" id="walletButton">Cuzdanıma Git</a>
+    </div>
+    <script>
+        let gameArea, bucket, countdown, gameInterval, speed, timeRemaining;
+        let dragging = false;
+        let score = 0;
+        const gameDuration = 20000; // 20 saniye
+        const targetTypes = ['lays', 'pepsi', 'ruffles']; // Hedef türleri
+
+        document.getElementById('startButton').addEventListener('click', startGame);
+        document.getElementById('restartButton').addEventListener('click', function() {
+            location.reload();
+        });
+        document.addEventListener('mousemove', moveBucketWithMouse);
+        document.addEventListener('mousedown', function(e) {
+            if (e.target === bucket) {
+                dragging = true;
+            }
+        });
+        document.addEventListener('mouseup', function() {
+            dragging = false;
+        });
+
+        function startGame() {
+            gameArea = document.getElementById('gameArea');
+            bucket = document.getElementById('bucket');
+            countdown = document.getElementById('countdown');
+            timeRemaining = document.getElementById('timeRemaining');
+            score = 0;
+            updateScore();
+            speed = 2;
+            countdown.innerHTML = 3;
+            countdown.classList.remove('hidden');
+
+            let counter = 3;
+            let countdownInterval = setInterval(function() {
+                countdown.innerHTML = counter;
+                counter--;
+                if (counter < 0) {
+                    clearInterval(countdownInterval);
+                    countdown.classList.add('hidden');
+                    beginGame();
+                }
+            }, 1000);
+        }
+
+        function beginGame() {
+            let timeElapsed = 0;
+            timeRemaining.innerText = 'KALAN SURE: ' + (gameDuration / 1000);
+            gameInterval = setInterval(function() {
+                timeElapsed += 100;
+                let timeLeft = (gameDuration - timeElapsed) / 1000;
+                timeRemaining.innerText = 'KALAN SURE: ' + timeLeft.toFixed(0);
+
+                if (timeElapsed <= 10000) {
+                    speed = 38;
+                } else if (timeElapsed <= 15000) {
+                    speed = 56;
+                } else {
+                    speed = 78;
+                }
+
+                if (timeElapsed % 500 === 0) {
+                    createTarget();
+                }
+
+                moveTargets();
+                setTimeout(gameOver, gameDuration);
+
+                if (timeElapsed >= gameDuration) {
+                    
+                    clearInterval(gameInterval);
+                    document.removeEventListener('mousemove', moveBucketWithMouse);
+                    document.removeEventListener('mousedown', onMouseDown);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+            }, 100);
+        }
+
+        function createTarget() {
+            let target = document.createElement('div');
+            let targetType = targetTypes[Math.floor(Math.random() * targetTypes.length)];
+            target.classList.add('target', targetType);
+            target.style.left = Math.floor(Math.random() * (gameArea.offsetWidth - 40)) + 'px';
+            target.style.top = '0px';
+            target.setAttribute('data-speed', speed);
+            gameArea.appendChild(target);
+        }
+
+        function moveTargets() {
+            let targets = document.querySelectorAll('.target');
+            targets.forEach(function(target) {
+                let currentTop = parseInt(target.style.top);
+                let targetSpeed = parseInt(target.getAttribute('data-speed'));
+                target.style.top = (currentTop + targetSpeed) + 'px';
+
+                if (currentTop > gameArea.offsetHeight) {
+                    gameArea.removeChild(target);
+                } else if (isTargetCaught(target)) {
+                    gameArea.removeChild(target);
+                    score++;
+                    updateScore();
+                }
+            });
+        }
+
+        function moveBucketWithMouse(e) {
+            if (dragging) {
+                let newLeft = e.clientX - gameArea.getBoundingClientRect().left - (bucket.offsetWidth / 2);
+                newLeft = Math.max(0, Math.min(newLeft, gameArea.offsetWidth - bucket.offsetWidth));
+                bucket.style.left = newLeft + 'px';
+            }
+        }
+
+        function isTargetCaught(target) {
+            let targetRect = target.getBoundingClientRect();
+            let bucketRect = bucket.getBoundingClientRect();
+            if (targetRect.right > bucketRect.left && targetRect.left < bucketRect.right &&
+                targetRect.bottom > bucketRect.top && targetRect.top < bucketRect.bottom) {
+                
+                if (target.classList.contains('pepsi')) {
+                    score += 20;
+                    if (score == 200) { increaseBucketSize(); }
+                } else if (target.classList.contains('lays')) {
+                    score += 15;
+                    if (score == 200) { increaseBucketSize(); }
+                } else if (target.classList.contains('ruffles')) {
+                    score += 10;
+                }
+                if (score >= 200) { 
+            increaseBucketSize(); 
+        }
+
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function increaseBucketSize() {
+            bucket.style.transform = 'scale(2)';
+            bucket.style.transition = 'transform 0.5s';
+        }
+
+        
+
+       function gameOver() {
+            document.getElementById('gameOverScreen').style.display = 'block'; // Make game over screen visible
+            document.getElementById('finalScore').textContent = score; // Display final score
+        }
+
+        document.getElementById('restartButton').addEventListener('click', function() {
+            location.reload(); // Reload the page to restart the game
+        });
+
+        
+
+    </script>
+
+    <audio id="backgroundMusic" loop>
+        <source src="BG.mp3" type="audio/mpeg">
+        Tarayıcınız audio elementini desteklemiyor.
+    </audio>
+    <script>
+        document.getElementById('startButton').addEventListener('click', function() {
+            var backgroundMusic = document.getElementById('backgroundMusic');
+            backgroundMusic.volume = 0.06;
+            backgroundMusic.play();
+        });
+    </script>
+
+    <audio id="pointSound">
+        <source src="YS.mp3" type="audio/mpeg">
+        Tarayıcınız audio elementini desteklemiyor.
+    </audio>
+    <script>
+        function updateScore() {
+            document.getElementById('score').innerText = 'SKOR: ' + score;
+            var pointSound = document.getElementById('pointSound');
+            pointSound.play();
+        }
+    </script>
+
+    <audio id="openingSound">
+        <source src="Acilis.mp3" type="audio/mpeg">
+        Tarayıcınız audio elementini desteklemiyor.
+    </audio>
+    <script>
+        document.getElementById('startButton').addEventListener('click', function() {
+            var openingSound = document.getElementById('openingSound');
+            openingSound.play();
+        });
+    </script>
+    
+</body>
+</html>
